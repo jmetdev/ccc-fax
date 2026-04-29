@@ -1,0 +1,20 @@
+<gateway name="webex">
+  <param name="username" value="LINE_ID_USER_PART"/>
+  <param name="auth-username" value="WEBEX_SIP_USERNAME"/>
+  <param name="password" value="WEBEX_PASSWORD"/>
+  <param name="realm" value="BroadWorks"/>
+  <param name="from-user" value="LINE_ID_USER_PART"/>
+  <param name="from-domain" value="LINE_ID_DOMAIN_PART"/>
+  <param name="proxy" value="WEBEX_OUTBOUND_PROXY_FQDN"/>
+  <param name="register-proxy" value="WEBEX_OUTBOUND_PROXY_FQDN"/>
+  <param name="outbound-proxy" value="WEBEX_OUTBOUND_PROXY_FQDN"/>
+  <param name="register" value="true"/>
+  <param name="register-transport" value="tls"/>
+  <param name="expire-seconds" value="120"/>
+  <param name="retry-seconds" value="30"/>
+  <param name="caller-id-in-from" value="true"/>
+  <param name="extension" value="LINE_ID_USER_PART"/>
+  <param name="extension-in-contact" value="true"/>
+  <param name="rfc-5626" value="true"/>
+  <param name="reg-id" value="1"/>
+</gateway>

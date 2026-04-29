@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en" class="mds-theme-stable-lightWebex">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CCC Fax Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script type="module" src="https://unpkg.com/@momentum-design/components/dist/browser/index.js"></script>
+  </head>
+  <body class="app-shell">
+    <div class="app-layout">
+      <aside class="app-sidebar" aria-label="Primary">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">CF</span>
+          <div>
+            <strong>CCC Fax</strong>
+            <span>Administration</span>
+          </div>
+        </div>
+        <nav class="nav-list" data-nav-list>
+          <a href="#dashboard" class="active" data-view-link="dashboard">Dashboard</a>
+          <a href="#provider-provisioning" data-view-link="provider-provisioning">Provider Provisioning</a>
+          <a href="#destination-configuration" data-view-link="destination-configuration">Destination Configuration</a>
+          <a href="#send" data-view-link="send">Send</a>
+          <a href="#fax-jobs" data-view-link="fax-jobs">Fax Jobs</a>
+          <a href="/api/health">Health API</a>
+        </nav>
+      </aside>
+
+      <main class="app-main">
+        <header class="page-header">
+          <div>
+            <p class="eyebrow">Webex Calling via FreeSWITCH</p>
+            <h1 data-page-title>Dashboard</h1>
+          </div>
+          <div class="header-actions">
+            <span class="status-pill" data-fs-status>Checking FreeSWITCH</span>
+            <button class="icon-button" type="button" data-refresh aria-label="Refresh dashboard">↻</button>
+          </div>
+        </header>
+
+        <section id="dashboard" class="view is-active" data-view="dashboard">
+          <div class="dashboard-grid">
+            <article class="panel status-card">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Runtime</p>
+                  <h2>System Status</h2>
+                </div>
+                <span class="badge" data-monitor-status>Checking</span>
+              </div>
+              <dl class="key-values">
+                <div><dt>FreeSWITCH</dt><dd data-system-fs>Unknown</dd></div>
+                <div><dt>Active Calls</dt><dd data-monitor-calls>Loading</dd></div>
+                <div><dt>Storage</dt><dd class="mono">{{ config.storage }}</dd></div>
+              </dl>
+            </article>
+
+            <article class="panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Queue</p>
+                  <h2>Job Queue</h2>
+                </div>
+              </div>
+              <div class="number-grid">
+                <div><span>Queued</span><strong data-stat="queued">{{ stats.queued }}</strong></div>
+                <div><span>In Progress</span><strong data-stat="in_progress">{{ stats.in_progress }}</strong></div>
+                <div><span>Recent Failures</span><strong data-stat="recent_failures">{{ stats.recent_failures }}</strong></div>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Webex</p>
+                  <h2>API Connectivity Status</h2>
+                </div>
+                <span class="badge" data-webex-status>{{ "Configured" if config else "Unknown" }}</span>
+              </div>
+              <dl class="key-values">
+                <div><dt>API Base</dt><dd class="mono">{{ config.get("webex_api_base", "") }}</dd></div>
+                <div><dt>Token</dt><dd data-webex-token>Checking</dd></div>
+                <div><dt>Organization</dt><dd class="mono" data-webex-org>Default</dd></div>
+              </dl>
+            </article>
+
+            <article class="panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Calling</p>
+                  <h2>Webex Calling Primary Gateway Status</h2>
+                </div>
+                <span class="badge" data-gateway-state>Unknown</span>
+              </div>
+              <dl class="key-values">
+                <div><dt>Gateway</dt><dd data-monitor-gateway>{{ gateway }}</dd></div>
+                <div><dt>Profile</dt><dd>{{ config.profile }}</dd></div>
+                <div><dt>Registration</dt><dd data-gateway-registration>Checking</dd></div>
+              </dl>
+            </article>
+
+            <article class="panel wide-card">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Configuration</p>
+                  <h2>Config Overview</h2>
+                </div>
+              </div>
+              <dl class="config-list">
+                <div><dt>Provider Directory</dt><dd class="mono">{{ config.provider_dir }}</dd></div>
+                <div><dt>Inbound Dialplan</dt><dd class="mono">{{ config.dialplan }}</dd></div>
+                <div><dt>Event Socket</dt><dd class="mono">{{ config.event_socket }}</dd></div>
+                <div><dt>Reload on Provision</dt><dd>{{ "Enabled" if config.reload_on_provision else "Disabled" }}</dd></div>
+                <div><dt>Conversion</dt><dd>{{ conversion.accepted_formats }}</dd></div>
+              </dl>
+            </article>
+
+            <article class="panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Access</p>
+                  <h2>License Level Overview</h2>
+                </div>
+              </div>
+              <dl class="key-values">
+                <div><dt>Level</dt><dd>{{ config.license_level }}</dd></div>
+                <div><dt>ImageMagick</dt><dd class="mono">{{ conversion.imagemagick }}</dd></div>
+                <div><dt>Office Conversion</dt><dd>{{ "Available" if conversion.office_available else "LibreOffice not installed" }}</dd></div>
+              </dl>
+            </article>
+          </div>
+          <pre class="terminal dashboard-terminal" data-monitor-detail>Waiting for monitor data...</pre>
+        </section>
+
+        <section id="provider-provisioning" class="view" data-view="provider-provisioning">
+          <section class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Webex Provisioning</p>
+                <h2>Line ID and DID Association</h2>
+              </div>
+              <span class="panel-note">Creates gateway XML and inbound routing</span>
+            </div>
+            <form class="webex-form" data-webex-form>
+              <label>
+                Gateway MAC
+                <input name="mac" placeholder="A1B2CDEF0012" required>
+              </label>
+              <button type="submit" class="button">Provision from Webex</button>
+              <span class="form-status" data-webex-form-status></span>
+            </form>
+            <form class="route-form" data-route-form>
+              <label>
+                Display Name
+                <input name="display_name" placeholder="Main Fax" required>
+              </label>
+              <label>
+                Webex Line ID
+                <input name="webex_line_id" placeholder="line_A1B2CDEF0012@tenant.webex.com" required>
+              </label>
+              <label>
+                DID
+                <input name="did_number" autocomplete="tel" placeholder="+14804720245" required>
+              </label>
+              <label>
+                Extension
+                <input name="extension" inputmode="numeric" placeholder="245">
+              </label>
+              <label>
+                Destination
+                <select name="destination_type">
+                  <option value="local">Local inbox</option>
+                  <option value="email">Email</option>
+                  <option value="webhook">Webhook</option>
+                </select>
+              </label>
+              <label>
+                Destination Value
+                <input name="destination_value" placeholder="ops@example.com or https://...">
+              </label>
+              <button type="submit" class="button">Add Route</button>
+              <span class="form-status" data-route-status></span>
+            </form>
+          </section>
+
+        </section>
+
+        <section id="destination-configuration" class="view" data-view="destination-configuration">
+          <section class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Inbound Destination Configurations</p>
+                <h2>Provisioned Line Delivery</h2>
+              </div>
+              <span class="form-status" data-route-edit-status></span>
+            </div>
+            <div class="table-wrap">
+              <table class="routes-table destination-routes-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Line ID</th>
+                    <th>DID</th>
+                    <th>Destination Type</th>
+                    <th>Destination Value</th>
+                    <th>Enabled</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody data-routes-body>
+                  {% for route in routes %}
+                    <tr data-route-row data-route-id="{{ route.id }}">
+                      <td>
+                        <input name="display_name" value="{{ route.display_name }}" required>
+                        <input name="webex_line_id" type="hidden" value="{{ route.webex_line_id }}">
+                        <input name="did_number" type="hidden" value="{{ route.did_number }}">
+                        <input name="extension" type="hidden" value="{{ route.extension or '' }}">
+                        <input name="webex_workspace_id" type="hidden" value="{{ route.webex_workspace_id or '' }}">
+                        <input name="webex_gateway_id" type="hidden" value="{{ route.webex_gateway_id or '' }}">
+                        <input name="notes" type="hidden" value="{{ route.notes or '' }}">
+                      </td>
+                      <td class="mono">{{ route.webex_line_id }}</td>
+                      <td>{{ route.did_number }}</td>
+                      <td>
+                        <select name="destination_type">
+                          <option value="local" {% if route.destination_type == "local" %}selected{% endif %}>Local inbox</option>
+                          <option value="email" {% if route.destination_type == "email" %}selected{% endif %}>Email</option>
+                          <option value="webex_bot" {% if route.destination_type == "webex_bot" %}selected{% endif %}>Webex Bot</option>
+                          <option value="teams_bot" {% if route.destination_type == "teams_bot" %}selected{% endif %}>MS Teams Bot</option>
+                          <option value="webhook" {% if route.destination_type == "webhook" %}selected{% endif %}>Webhook</option>
+                        </select>
+                      </td>
+                      <td><input name="destination_value" value="{{ route.destination_value or '' }}" placeholder="address, room ID, webhook URL"></td>
+                      <td>
+                        <label class="switch-row">
+                          <input name="enabled" type="checkbox" {% if route.enabled %}checked{% endif %}>
+                          <span>Enabled</span>
+                        </label>
+                      </td>
+                      <td><button type="button" class="button button-small" data-save-route>Save</button></td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Delivery Providers</p>
+                <h2>Destination Configuration</h2>
+              </div>
+              <span class="form-status" data-destination-status></span>
+            </div>
+            <form class="destination-config-form" data-destination-form>
+              <fieldset>
+                <legend>SMTP Relay Server</legend>
+                <label class="switch-row">
+                  <input name="smtp_enabled" type="checkbox" {% if destination_settings.smtp_enabled %}checked{% endif %}>
+                  <span>Enable SMTP delivery</span>
+                </label>
+                <label>Host <input name="smtp_host" value="{{ destination_settings.smtp_host or '' }}" placeholder="smtp.example.com"></label>
+                <label>Port <input name="smtp_port" type="number" min="1" max="65535" value="{{ destination_settings.smtp_port or 587 }}"></label>
+                <label>Username <input name="smtp_username" value="{{ destination_settings.smtp_username or '' }}"></label>
+                <label>Password <input name="smtp_password" type="password" value="{{ destination_settings.smtp_password or '' }}"></label>
+                <label>From Address <input name="smtp_from_address" type="email" value="{{ destination_settings.smtp_from_address or '' }}" placeholder="fax@example.com"></label>
+                <label class="switch-row">
+                  <input name="smtp_use_tls" type="checkbox" {% if destination_settings.smtp_use_tls %}checked{% endif %}>
+                  <span>Use TLS</span>
+                </label>
+              </fieldset>
+
+              <fieldset>
+                <legend>Webex Bot Delivery</legend>
+                <label class="switch-row">
+                  <input name="webex_bot_enabled" type="checkbox" {% if destination_settings.webex_bot_enabled %}checked{% endif %}>
+                  <span>Enable Webex bot delivery</span>
+                </label>
+                <label>Bot Token <input name="webex_bot_token" type="password" value="{{ destination_settings.webex_bot_token or '' }}"></label>
+                <label>Default Room ID <input name="webex_room_id" value="{{ destination_settings.webex_room_id or '' }}"></label>
+              </fieldset>
+
+              <fieldset>
+                <legend>MS Teams Bot Delivery</legend>
+                <label class="switch-row">
+                  <input name="teams_bot_enabled" type="checkbox" {% if destination_settings.teams_bot_enabled %}checked{% endif %}>
+                  <span>Enable Teams delivery</span>
+                </label>
+                <label>Incoming Webhook URL <input name="teams_webhook_url" value="{{ destination_settings.teams_webhook_url or '' }}" placeholder="https://..."></label>
+              </fieldset>
+
+              <button type="submit" class="button">Save Destination Configuration</button>
+            </form>
+          </section>
+        </section>
+
+        <section id="send" class="view" data-view="send">
+          <section class="panel send-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Outbound</p>
+                <h2>New Fax Submission</h2>
+              </div>
+              <span class="panel-note">Gateway: {{ gateway }}</span>
+            </div>
+            <form action="/faxes" method="post" enctype="multipart/form-data" class="send-form">
+              <label>
+                Send From DID
+                <select name="from_number">
+                  <option value="">Default caller ID</option>
+                  {% for route in routes %}
+                    {% if route.enabled %}
+                      <option value="{{ route.did_number }}">{{ route.display_name }} - {{ route.did_number }}</option>
+                    {% endif %}
+                  {% endfor %}
+                </select>
+              </label>
+              <label>
+                Destination Number
+                <input name="to_number" autocomplete="tel" placeholder="4809008180" required>
+              </label>
+              <label>
+                File
+                <input name="document" type="file" accept=".pdf,.tif,.tiff,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp,.rtf" required>
+              </label>
+              <label class="check-row">
+                <input name="send_now" type="checkbox" checked>
+                <span>Send immediately</span>
+              </label>
+              <button type="submit" class="button">Create Fax Job</button>
+            </form>
+          </section>
+        </section>
+
+        <section id="fax-jobs" class="view" data-view="fax-jobs">
+          <section class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">History</p>
+                <h2>Fax Jobs</h2>
+              </div>
+              <span class="panel-note" data-last-updated>Not refreshed yet</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Direction</th>
+                    <th>Status</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Updated</th>
+                    <th>FreeSWITCH UUID</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody data-jobs-body>
+                  {% for job in jobs %}
+                    <tr>
+                      <td>{{ job.id }}</td>
+                      <td><span class="badge">{{ job.direction }}</span></td>
+                      <td><span class="badge badge-status" data-status="{{ job.status }}">{{ job.status }}</span></td>
+                      <td>{{ job.from_number or "" }}</td>
+                      <td>{{ job.to_number or "" }}</td>
+                      <td>{{ job.updated_at }}</td>
+                      <td class="mono">{{ job.freeswitch_uuid or "" }}</td>
+                      <td class="actions-cell">
+                        {% if job.status in ["ready", "send_failed"] %}
+                          <form action="/faxes/{{ job.id }}/send" method="post">
+                            <button type="submit" class="button button-small">Send</button>
+                          </form>
+                        {% endif %}
+                        {% if job.tiff_path %}
+                          <a class="button button-small button-secondary" href="/faxes/{{ job.id }}/file">File</a>
+                        {% endif %}
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+  </body>
+</html>

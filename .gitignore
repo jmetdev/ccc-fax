@@ -1,0 +1,20 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+.DS_Store
+
+# Runtime state
+storage/
+*.db
+*.sqlite
+*.sqlite3
+
+# Local FreeSWITCH/docker checkout with runtime output and SIP credentials.
+# Add a clean example tree later instead of committing this working copy.
+freeswitch-docker/
+
+# Local tooling
+.codex/
+.pytest_cache/
+.mypy_cache/
